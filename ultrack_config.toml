@@ -1,0 +1,39 @@
+[data]
+n_workers = 1
+working_dir = "."
+database = "sqlite"
+address = ""
+
+[segmentation]
+min_area = 250
+max_area = 200000000
+n_workers = 8
+min_frontier = 0.5
+threshold = 0
+max_noise = 0.0
+# ws_hierarchy = 
+anisotropy_penalization = 0.0
+
+[linking]
+max_distance = 50
+n_workers = 8
+max_neighbors = 5
+distance_weight = 0
+z_score_threshold = 5.0
+
+[tracking]
+# 0.5094339622641509
+appear_weight = -25
+disappear_weight = -24	
+division_weight = -1
+n_threads = 8
+# window_size = ""
+overlap_size = 1
+solution_gap = 0.0
+time_limit = 180
+method = 0
+link_function = "power"
+power = 4
+bias = -0.001
+# dismiss_weight_guess = 
+# include_weight_guess = 
