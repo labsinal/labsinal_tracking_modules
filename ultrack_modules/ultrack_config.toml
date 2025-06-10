@@ -7,7 +7,7 @@ address = ""
 [segmentation]
 min_area = 250
 max_area = 200000000
-n_workers = 8
+n_workers = 16
 min_frontier = 0.5
 threshold = 0
 max_noise = 0.0
@@ -26,7 +26,7 @@ z_score_threshold = 5.0
 appear_weight = -25
 disappear_weight = -24	
 division_weight = -1
-n_threads = 8
+n_threads = 16
 # window_size = ""
 overlap_size = 1
 solution_gap = 0.0

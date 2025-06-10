@@ -1,2 +1,3 @@
-*/metadata.toml
-*/data.db
+**/metadata.toml
+**/data.db
+**/__pycache__/
