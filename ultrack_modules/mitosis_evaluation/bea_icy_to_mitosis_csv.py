@@ -77,4 +77,4 @@ def main() -> None:
 ####################################
 # Run main function if runned direclty
 if __name__ == "__main__": 
-    main()
+    main() 
