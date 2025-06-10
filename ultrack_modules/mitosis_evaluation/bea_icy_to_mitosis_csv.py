@@ -3,7 +3,7 @@ Module that converts beatriz's icy data anotation to mitosis.csv
 """
 
 # Imports
-from pandas import DataFrame
+from pandas import DataFrame, read_excel
 
 #####################################
 # Define helper functions
@@ -16,8 +16,23 @@ def bea_to_mitosis_csv(bea:DataFrame) -> DataFrame:
     bea : pandas.DataFrame | DataFrame in bea's annotation format
     return : DataFrame | DataFrame in the mitosis.csv format
     """
-    
 
+    # Filter only wanted cols
+    output_df = bea[["Name", "Position X", "Position Y", "Position T"]]
+
+    # Filter only mitosis detections
+    output_df = output_df[output_df["Name"].str.contains("(mitosis)")]
+
+    # Remove "(mitosis)"
+    output_df.Name = output_df.Name.str.replace("(mitosis)", "")
+
+    # Rename the collumns
+    output_df = output_df.rename(columns={"Name" : "name", 
+                              "Position X" : "x",
+                              "Position Y" : "y",
+                              "Position T" : "t"})
+
+    return output_df
 
 #####################################
 # Define main function
@@ -46,7 +61,18 @@ def main() -> None:
                         help="File in the mitosis.csv format to be saved (.csv)")
     
     # create args dict
-    args_dict = vars(parser.parse_args())
+    args_dict : dict = vars(parser.parse_args())
+
+    # Open bea's file
+    input_df : DataFrame = read_excel(args_dict["input"])
+
+    # Call function
+    output_df : DataFrame = bea_to_mitosis_csv(input_df)
+
+    # Save output df
+    output_df.to_csv(args_dict["output"])
+
+    print("Done!")
 
 ####################################
 # Run main function if runned direclty
