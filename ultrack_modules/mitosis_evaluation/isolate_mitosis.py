@@ -4,14 +4,12 @@ the last frame from a parent cell (mitosis frame)
 """
 
 ####################################
-print("Importing required libraries...")
 from argparse import ArgumentParser
 
 from pandas import DataFrame
 from pandas import read_csv
 
 from numpy import delete, where
-print("All libraries imported sucessfully!")
 
 ####################################
 # Define Argument Parsing Function

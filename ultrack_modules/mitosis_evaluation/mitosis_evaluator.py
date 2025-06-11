@@ -1,5 +1,7 @@
 """
 Module that evaluates the proportion of right mitosis
+    ◍ bash-debug-adapter
+    ◍ bash-language-server bashls
 """
 
 ####################################
@@ -60,6 +62,13 @@ def get_args_dict() -> dict:
                         required=False,
                         dest="save_scores",
                         help="To save scores as a .txt add its path here!")
+
+    parser.add_argument("--is_mitosis",
+                        action="store_true",
+                        required=False,
+                        dest="is_mitosis",
+                        help="Add this if the file already is the isolated mitosis")
+
 
     # creating arguments dictionary
     args_dict = vars(parser.parse_args())
@@ -140,13 +149,15 @@ def main() -> None:
     pos_tolerance       = args_dict["pos_tolerance"]
     t_tolerance         = args_dict["t_tolerance"]
     save_scores         = args_dict["save_scores"]
+    is_mitosis          = args_dict["is_mitosis"]
 
     # Open tables
     ground_truth_table  = read_csv(ground_truth_path)
-    tracking_table      = read_csv(tracking_table_path)
+    mitosis_table      = read_csv(tracking_table_path)
 
-    mitosis_table = isolate_mitosis(tracking_table)
-
+    if not is_mitosis:
+        mitosis_table = isolate_mitosis(mitosis_table)
+    
     # Run evaluation function
     precision, recall, f1 = evaluate_mitosis(ground_truth= ground_truth_table,
                                                    tracking= mitosis_table,
