@@ -21,7 +21,7 @@ def bea_to_mitosis_csv(bea:DataFrame) -> DataFrame:
     output_df = bea[["Name", "Position X", "Position Y", "Position T"]]
 
     # Filter only mitosis detections
-    output_df = output_df[output_df["Name"].str.contains("(mitosis)")]
+    output_df = output_df[output_df["Name"].str.extract("(mitosis)")]
 
     # Remove "(mitosis)"
     output_df.Name = output_df.Name.str.replace("(mitosis)", "")
@@ -69,8 +69,9 @@ def main() -> None:
     # Call function
     output_df : DataFrame = bea_to_mitosis_csv(input_df)
 
+    print(output_df)
     # Save output df
-    output_df.to_csv(args_dict["output"])
+    #output_df.to_csv(args_dict["output"], index = False)
 
     print("Done!")
 
