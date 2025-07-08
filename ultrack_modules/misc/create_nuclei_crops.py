@@ -97,8 +97,8 @@ def create_crops_from_folder(input_table:DataFrame, input_images_path:str,
                 input_images = images,
                 input_folder = input_images_path,
                 output_folder = output_folder,
-                width = width,
-                height = height,
+                width = int(width),
+                height = int(height),
                 max_frame = max_frame
             ),
             tasks
