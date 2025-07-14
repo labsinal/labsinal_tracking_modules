@@ -10,8 +10,7 @@ if [ "$#" -ne 3 ]; then
 fi
 
 INPUT_PATH="$1"
-OUTPUT_PATH="$2"
-ULTRACK_CONFIG="$3"
+ULTRACK_CONFIG="$2"
 
 # Set your conda environment name here
 CONDA_ENV_NAME="/home/frederico/envs/tracking-ultrack"
@@ -34,6 +33,8 @@ python ultrack_modules/pipeline/cellpose_segmentation.py --input "$PREPROCESSED_
 
 # Run tracking step
 echo "Running tracking..."
-python ultrack_modules/pipeline/ultrack_track_segmentation.py --input "$SEGMENTED_DIR" --output "$OUTPUT_PATH" --config "$ULTRACK_CONFIG"
+TRACKING_DIR="$(dirname "$INPUT_PATH")/trackings"
+mkdir -p "$TRACKING_DIR"
+python ultrack_modules/pipeline/ultrack_track_segmentation.py --input "$SEGMENTED_DIR" --output "$TRACKING_DIR" --config "$ULTRACK_CONFIG"
 
 echo "Pipeline completed successfully."
