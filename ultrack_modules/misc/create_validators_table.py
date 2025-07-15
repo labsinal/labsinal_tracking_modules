@@ -18,7 +18,7 @@ def create_validators_table(input: DataFrame) -> DataFrame:
     # Compute min and max t and get last fate
     t_min = input.groupby("track_id")["t"].min().rename("t_incial")
     t_max = input.groupby("track_id")["t"].max().rename("t_final")
-    fate = input.groupby("track_id")["destino"].last()  # last known fate
+    fate = input.groupby("track_id")["fate"].last().rename("destino")  # last known fate
 
     # Combine all
     validators_table = DataFrame({
@@ -26,6 +26,8 @@ def create_validators_table(input: DataFrame) -> DataFrame:
         "t_max": t_max,
         "fate": fate
     }).reset_index()
+
+    validators_table[["correto_(y/n)", "destino_validado", "t_final_validado", "Obs."]] = ""
 
     return validators_table
 
