@@ -17,7 +17,7 @@ from PIL import ImageDraw, ImageFont
 ###########################
 # define helper functions
 
-def add_overlay_from_group(t, group, input_images, output_folder) -> None:
+def add_overlay_from_group(t, group, input_images, output_folder, phenotype="", add_frame=False) -> None:
     """
     Funcion that from a grouped df creates a overlayed image
 
@@ -39,11 +39,18 @@ def add_overlay_from_group(t, group, input_images, output_folder) -> None:
 
     font = ImageFont.load_default(size=20)
 
+    if add_frame:
+        draw.text(xy=(10, 10), text=f"Frame: {t}", fill=(255, 0, 0), font=font)
+
     # iterate over all cells in the group
     for _, row in group.iterrows():
         
         # get cell coordinates
         x, y = int(row.x), int(row.y)
+
+        if phenotype:
+            # add phenotype information
+            draw.text(xy=(x, y - 20), text=f"{phenotype}: {row[phenotype]}", fill=(255, 0, 0), font=font)
 
         # add number to the cell
         draw.text(xy = (x, y), text = str(row.track_id), fill = (0, 255, 0), font=font)
@@ -52,7 +59,8 @@ def add_overlay_from_group(t, group, input_images, output_folder) -> None:
 
 
 def create_crops_from_folder(input_table:DataFrame, input_images_path:str,
-                             output_folder:str) -> None:
+                             output_folder:str, add_frame:bool,
+                             phenotype:str) -> None:
     """
     Function that creates crops from folder
     """
@@ -73,7 +81,9 @@ def create_crops_from_folder(input_table:DataFrame, input_images_path:str,
             partial(
                 add_overlay_from_group,
                 input_images = images,
-                output_folder = output_folder
+                output_folder = output_folder,
+                phenotype = phenotype,
+                add_frame = add_frame
             ),
             tasks
         )
@@ -113,6 +123,11 @@ def main() -> None:
     parser.add_argument("--phenotype", "-p",
                         required=False,
                         help="Defines which other data will be printed with the cells")
+    
+    parser.add_argument("--add_frame", "-ap",
+                        required=False,
+                        action="store_true",
+                        help="If set, adds the frame number to the image name")
 
     args_dict = vars(parser.parse_args())
 
@@ -125,7 +140,9 @@ def main() -> None:
     # Call main function
     create_crops_from_folder(input_table=df,
                              input_images_path=args_dict["input_folder"],
-                             output_folder=args_dict["output"])
+                             output_folder=args_dict["output"],
+                             add_frame = args_dict["add_frame"],
+                             phenotype = args_dict["phenotype"])
 
 ##########################
 # run code if runned directly
