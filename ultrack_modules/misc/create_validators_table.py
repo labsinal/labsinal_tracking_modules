@@ -10,17 +10,24 @@ from pandas import DataFrame, read_csv
 ######################################
 # Define helper functions
 
-def create_validators_table(input:DataFrame) -> DataFrame:
+def create_validators_table(input: DataFrame) -> DataFrame:
     """
     Function that creates a table for tracking validation
     from ultrack output csv.
     """
+    # Compute min and max t and get last fate
+    t_min = input.groupby("track_id")["t"].min().rename("t_incial")
+    t_max = input.groupby("track_id")["t"].max().rename("t_final")
+    fate = input.groupby("track_id")["destino"].last()  # last known fate
 
-    validators_table = input.groupby("track_id").max()
+    # Combine all
+    validators_table = DataFrame({
+        "t_min": t_min,
+        "t_max": t_max,
+        "fate": fate
+    }).reset_index()
 
-    validators_table.drop(validators_table.columns.difference(["track_id", "t", "fate"]),axis= 1, inplace=True)
-
-    return validators_table.reset_index()
+    return validators_table
 
 ######################################
 # Define main function
@@ -51,12 +58,12 @@ def main() -> None:
 
     validators_table = create_validators_table(input)
 
-    validators_table.to_csv(args_dict["output"], index=False)
+    validators_table.to_excel(args_dict["output"], index=False)
 
 
 ######################################
-# Call main function id runned directly
+# Call main function if run directly
 if __name__ == "__main__":
     main()
 
-# end of current module-
+# end of current module
