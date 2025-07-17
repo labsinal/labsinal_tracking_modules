@@ -3,20 +3,70 @@ Module that applies labsinal's preprocess for tracking
 """
 #########################################
 # imports
-from tifffile import imread, imwrite
+from tifffile import imwrite
 from multiprocessing import Pool
 from ultrack.imgproc import register_timelapse
 import cv2
+import tifffile
 import numpy as np
 import os
 from tqdm import tqdm
+from scipy.ndimage import gaussian_filter
+from scipy.signal import find_peaks
+import dask.array as da
 
 #########################################
 # Define helper functions
 
-def open_and_apply_clahe(img_path):
+def check_file_unfocused(file_path: str) -> bool:
     """
-    Function that opens and applies clahe filter to a image
+    Function to check if a file is unfocused based on image analysis.
+
+    params:
+        file_path (str): Path to the image file.
+    returns:
+        bool: True if the file is unfocused, False otherwise.
+    """
+    # Open image
+    file = tifffile.imread(file_path)
+
+    # Calculate the mean for each row
+    means = np.array([np.mean(row) for row in file])
+
+    # Calculate smoothed curve
+    smooth = gaussian_filter(means, sigma=10)
+
+    # Find peaks in the smoothed curve
+    peaks, _ = find_peaks(smooth, prominence=0.5)
+
+    # Return True if no peaks are found, indicating the file is unfocused
+    return len(peaks) > 0
+
+def filter_unfocused_files(input_dir: str) -> list[str]:
+    """
+    Function to filter out unfocused files based on image analysis.
+
+    params:
+        input_dir (str): Directory containing the image files to be filtered.
+    returns:
+        List: The function saves the filtered files in the specified output directory.
+    """
+    # Get all files in the input directory
+    files = os.listdir(input_dir)
+    filepaths = [os.path.join(input_dir, f) for f in files if f.endswith('.tif') or f.endswith('.tiff')]
+
+    # Use multiprocessing to check files in parallel
+    with Pool() as pool:
+        results = pool.map(check_file_unfocused, filepaths)
+
+    focused = [f for f, keep in zip(filepaths, results) if keep]
+    unfocused = set(filepaths) - set(focused)
+
+    return focused, unfocused
+
+def apply_clahe(img):
+    """
+    Function that applies clahe filter to a image
 
     params:
     img_path | image path
@@ -24,8 +74,6 @@ def open_and_apply_clahe(img_path):
     
     CLAHE = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     # open image
-    img = imread(img_path)
-
     # Normalize to 8-bit for CLAHE
     img_norm = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
@@ -34,33 +82,28 @@ def open_and_apply_clahe(img_path):
 
     return img_eq
 
-def preprocess_images(input_path:str):
+def preprocess_images(input_path: str):
     """
     Function that applies preprocess from labsinal's tracking pipeline
 
     params:
-    input_path:str | path fto folder containing unprocessed images
+    input_path:str | path to folder containing unprocessed images
     """
-    # get paths in order
-    filenames = sorted([x for x in os.listdir(input_path) if x.endswith((".tif", ".tiff"))])
-    filepaths = [os.path.join(input_path, x) for x in filenames]
+    focused, _ = filter_unfocused_files(input_path)
 
-    # apply clahe in parallel
-    clahed_images = []
+    focused = [f for f in sorted(focused)]  # garante ordem alfabética consistente
+    focused_images = da.stack([da.from_array(tifffile.imread(f), chunks="auto") for f in focused])
+
+    registered_images = register_timelapse(focused_images)
+
+    # apply CLAHE in order
     with Pool() as pool:
-        with tqdm(total=len(filepaths), desc="Applying CLAHE") as pbar:
-            clahed_images = []
-            for result in pool.imap_unordered(open_and_apply_clahe, filepaths):
-                clahed_images.append(result)
-                pbar.update(1)
+        clahed_images = list(tqdm(pool.imap(apply_clahe, registered_images), total=len(registered_images), desc="Applying CLAHE"))
 
-    clahed_images = np.array(clahed_images)
+    filenames = list(map(os.path.basename, focused))
 
-    # register timelapse
-    registered_images = register_timelapse(clahed_images)
+    return clahed_images, filenames
 
-    # return processed images
-    return registered_images, filenames
 
 #########################################
 # Define code's main function
@@ -86,7 +129,10 @@ def main() -> None:
 
     processed_images, filenames = preprocess_images(args.input_path)
 
+    os.makedirs(args.output_path, exist_ok=True)
+
     for img, filename in zip(processed_images, filenames):
+        print(filename)
         save_path = os.path.join(args.output_path, filename)
         imwrite(save_path, img)
     
