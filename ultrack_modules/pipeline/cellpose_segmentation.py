@@ -55,7 +55,7 @@ def run_cellpose_segmentation(input_path:str, output_path:str):
     for image_path, filename in tqdm(zip(filepaths, filenames), total=len(filenames), desc="Running Cellpose"):
         img, masks, flows = segment_with_cellpose(image_path, model)
         out_path = os.path.join(output_path, filename)
-        io.save_masks(img, masks, flows, out_path)
+        io.imsave(out_path, masks.astype(np.uint8))
 
 #########################################
 # Define main function

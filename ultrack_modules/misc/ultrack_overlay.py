@@ -50,7 +50,7 @@ def add_overlay_from_group(t, group, input_images, output_folder, phenotype="", 
 
         if phenotype:
             # add phenotype information
-            draw.text(xy=(x, y - 20), text=f"{phenotype}: {row[phenotype]}", fill=(255, 0, 0), font=font)
+            draw.text(xy=(x, y - 20), text=f"{row[phenotype]}", fill=(255, 0, 0), font=font)
 
         # add number to the cell
         draw.text(xy = (x, y), text = str(row.track_id), fill = (0, 255, 0), font=font)
@@ -73,7 +73,7 @@ def create_crops_from_folder(input_table:DataFrame, input_images_path:str,
     grouped_df = input_table.groupby("t")
 
     # Create tasks
-    tasks = [(t, group) for t, group in grouped_df]
+    tasks = [(int(t), group) for t, group in grouped_df]
 
     # Create crops in parallel
     with Pool() as pool:
