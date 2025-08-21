@@ -15,8 +15,11 @@ def deal_with_annotation(annotation_df: DataFrame, tracking_df: DataFrame) -> Da
     """
     # make sure df types
     annotation_df["id"] = annotation_df["id"].astype(str)
-    annotation_df["frame"] = annotation_df["frame"].astype(int)
-    tracking_df["track_id"] = tracking_df["track_id"].astype(str)
+    annotation_df["frame"] = annotation_df["frame"].astype(float)
+    tracking_df["t"] = tracking_df["t"].astype(float)
+
+    tracking_df["track_id"] = tracking_df["track_id"].astype(float).astype(str)
+    tracking_df["parent_track_id"] = tracking_df["parent_track_id"].astype(float).astype(str)
 
     # iterate through the annotation DataFrame
     for index, row in annotation_df.iterrows():
@@ -33,22 +36,23 @@ def deal_with_annotation(annotation_df: DataFrame, tracking_df: DataFrame) -> Da
                 frame = row["frame"]
                 id = row["id"]
                 # change the id of the cell from the frame onwards
+                new_id = id.replace(".0", ".1")
                 tracking_df.loc[
-                    (tracking_df["track_id"] == id) & (tracking_df["frame"] >= frame),
-                    "track_id",
-                ] = (
-                    id + ".1"
-                )
+                    (tracking_df["track_id"] == id) & (tracking_df["t"] >= frame),
+                    "track_id"
+                ] = new_id
+
+                tracking_df.loc[tracking_df["track_id"] == new_id, "parent_track_id"] = id
 
                 tracking_df.loc[
-                    tracking_df["parent_track_id" == id, "parent_track_id"]
-                ] = (id + ".1")
+                    tracking_df["parent_track_id"] == id, "parent_track_id"
+                ] = new_id
             case "morte":
                 # remove the cell from the frame onwards
                 frame = row["frame"]
                 id = row["id"]
                 tracking_df = tracking_df[
-                    ~((tracking_df["track_id"] == id) & (tracking_df["frame"] > frame))
+                    ~((tracking_df["track_id"] == id) & (tracking_df["t"] > frame))
                 ]
 
     return tracking_df
@@ -97,7 +101,7 @@ def main() -> None:
     tracking_df: DataFrame = read_csv(args.tracking_file)
 
     # Deal with annotation
-    fitted_tracking_df: DataFrame = deal_with_annotation(annotation_df, tracking_df)
+    fitted_tracking_df: DataFrame = deal_with_annotation(annotation_df=annotation_df, tracking_df=tracking_df)
 
     # Save the fitted tracking data
     fitted_tracking_df.to_csv(args.output_file, index=False)
