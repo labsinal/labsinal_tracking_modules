@@ -42,11 +42,14 @@ def deal_with_annotation(annotation_df: DataFrame, tracking_df: DataFrame) -> Da
                     "track_id"
                 ] = new_id
 
-                tracking_df.loc[tracking_df["track_id"] == new_id, "parent_track_id"] = id
-
                 tracking_df.loc[
                     tracking_df["parent_track_id"] == id, "parent_track_id"
                 ] = new_id
+
+                tracking_df.loc[tracking_df["track_id"] == new_id, "parent_track_id"] = id
+
+                tracking_df.loc[tracking_df["track_id"] == id, "fate"] = "mitosis"
+
             case "morte":
                 # remove the cell from the frame onwards
                 frame = row["frame"]
@@ -54,6 +57,7 @@ def deal_with_annotation(annotation_df: DataFrame, tracking_df: DataFrame) -> Da
                 tracking_df = tracking_df[
                     ~((tracking_df["track_id"] == id) & (tracking_df["t"] > frame))
                 ]
+                tracking_df.loc[tracking_df["track_id"] == id, "fate"] = "death"
 
     return tracking_df
 

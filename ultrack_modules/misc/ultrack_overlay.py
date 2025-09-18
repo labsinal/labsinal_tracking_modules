@@ -19,74 +19,68 @@ from PIL import ImageDraw, ImageFont
 
 def add_overlay_from_group(t, group, input_images, output_folder, phenotype="", add_frame=False) -> None:
     """
-    Funcion that from a grouped df creates a overlayed image
-
-    params:
-    t : time from the group
-    group : the group itself
-    input_images : list of image paths
-    output_folder : path to save the images
+    Function that from a grouped df creates an overlayed image
     """
-    
     image_path = input_images[t]
 
     # open image
-    image = Image.open(image_path)
-
-    image = image.convert("RGB")
-
+    image = Image.open(image_path).convert("RGB")
     draw = ImageDraw.Draw(image)
 
-    font = ImageFont.load_default(size=20)
+    # font (default PIL font, since load_default() does not take size param)
+    try:
+        font = ImageFont.truetype("DejaVuSans.ttf", 20)
+    except:
+        font = ImageFont.load_default()
 
     if add_frame:
         draw.text(xy=(10, 10), text=f"Frame: {t}", fill=(255, 0, 0), font=font)
 
-    # iterate over all cells in the group
-    for _, row in group.iterrows():
-        
-        # get cell coordinates
-        x, y = int(row.x), int(row.y)
+    # if there are cells, draw them
+    if group is not None and not group.empty:
+        for _, row in group.iterrows():
+            x, y = int(row.x), int(row.y)
 
-        if phenotype:
-            # add phenotype information
-            draw.text(xy=(x, y - 20), text=f"{row[phenotype]}", fill=(255, 0, 0), font=font)
+            if phenotype:
+                draw.text(xy=(x, y - 20), text=f"{row[phenotype]}", fill=(255, 0, 0), font=font)
 
-        # add number to the cell
-        draw.text(xy = (x, y), text = str(row.track_id), fill = (0, 255, 0), font=font)
-    
+            draw.text(xy=(x, y), text=str(row.track_id), fill=(0, 255, 0), font=font)
+
     image.save(join(output_folder, basename(image_path)))
 
 
-def create_crops_from_folder(input_table:DataFrame, input_images_path:str,
-                             output_folder:str, add_frame:bool,
-                             phenotype:str) -> None:
+def create_crops_from_folder(input_table: DataFrame, input_images_path: str,
+                             output_folder: str, add_frame: bool,
+                             phenotype: str) -> None:
     """
     Function that creates crops from folder
     """
-    
+
     # Create ordered list of images
-    images = sorted(glob(join(input_images_path,"*.tif")))
-    images = list(map(lambda x:join(input_images_path, x), images))
+    images = sorted(glob(join(input_images_path, "*.tif")))
 
-    # Group df by frame
-    grouped_df = input_table.groupby("t")
+    # index dataframe by t for fast lookup
+    grouped_df = dict(tuple(input_table.groupby("t")))
 
-    # Create tasks
-    tasks = [(int(t), group) for t, group in grouped_df]
+    # Create tasks for every frame in folder
+    tasks = []
+    for t, image_path in enumerate(images):
+        group = grouped_df.get(t, None)  # None if no detections
+        tasks.append((t, group))
 
-    # Create crops in parallel
+    # Run in parallel
     with Pool() as pool:
         pool.starmap(
             partial(
                 add_overlay_from_group,
-                input_images = images,
-                output_folder = output_folder,
-                phenotype = phenotype,
-                add_frame = add_frame
+                input_images=images,
+                output_folder=output_folder,
+                phenotype=phenotype,
+                add_frame=add_frame
             ),
             tasks
         )
+
 
 ###########################
 # define main function
