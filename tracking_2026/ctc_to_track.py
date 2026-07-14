@@ -10,17 +10,17 @@ import argparse
 
 def parse_res_track(ctc_folder):
     """
-    Read the res_track.txt (or man_track.txt) file from the CTC format and
-    return a dictionary mapping track_id -> parent_id.
+    Lê o arquivo res_track.txt (ou man_track.txt) do formato CTC e retorna
+    um dicionário mapeando track_id -> parent_id.
 
-    File format (one line per track):
+    Formato do arquivo (uma linha por track):
         L  B  E  P
-        L = track label/ID
-        B = start frame (zero-based)
-        E = end frame (zero-based)
-        P = parent track ID (0 = no parent)
+        L = label/ID da track
+        B = frame de início (zero-based)
+        E = frame de fim (zero-based)
+        P = ID da track mãe (0 = sem mãe)
 
-    Returns parent_id as -1 when P == 0 (no defined parent).
+    Retorna parent_id como -1 quando P == 0 (sem mãe definida).
     """
     for filename in ("res_track.txt", "man_track.txt"):
         txt_path = os.path.join(ctc_folder, filename)
@@ -28,10 +28,10 @@ def parse_res_track(ctc_folder):
             break
     else:
         raise FileNotFoundError(
-            f"No 'res_track.txt' or 'man_track.txt' file found in: {ctc_folder}"
+            f"Nenhum arquivo 'res_track.txt' ou 'man_track.txt' encontrado em: {ctc_folder}"
         )
 
-    parent_map = {}  # track_id -> parent_id (-1 if no parent)
+    parent_map = {}  # track_id -> parent_id (-1 se sem mãe)
 
     with open(txt_path, "r") as f:
         for line in f:
@@ -42,7 +42,7 @@ def parse_res_track(ctc_folder):
             if len(parts) < 4:
                 continue
             label, _begin, _end, parent = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
-            # In the CTC standard, P=0 means "no parent"
+            # No padrão CTC, P=0 significa "sem mãe"
             parent_map[label] = parent if parent != 0 else -1
 
     return parent_map
@@ -50,38 +50,38 @@ def parse_res_track(ctc_folder):
 
 def _frame_index_from_name(file_path):
     """
-    Extract the frame index from the file name (e.g. 'mask003.tif' -> 3),
-    rather than relying on the position in the list. This avoids
-    desynchronization when frames are missing or names lack zero-padding.
+    Extrai o índice de frame do nome do arquivo (ex.: 'mask003.tif' -> 3),
+    em vez de confiar na posição na lista. Isso evita dessincronização
+    quando há frames faltando ou nomes sem zero-padding.
     """
     basename = os.path.basename(file_path)
     match = re.search(r"(\d+)", basename)
     if match is None:
-        raise ValueError(f"Could not extract a frame index from: {basename}")
+        raise ValueError(f"Não foi possível extrair índice de frame de: {basename}")
     return int(match.group(1))
 
 
 def ctc_to_dataframe(ctc_folder):
     """
-    Read the CTC-format mask sequence and extract the (x, y) coordinates of
-    each track_id per frame, including the 'parent_id' column read from
-    res_track.txt.
+    Lê a sequência de máscaras do formato CTC e extrai
+    as coordenadas (x, y) de cada track_id por frame,
+    incluindo a coluna 'parent_id' lida do res_track.txt.
 
-    parent_id == -1 indicates the cell has no defined parent.
+    parent_id == -1 indica que a célula não possui mãe definida.
 
-    NOTE on semantics: in CTC, parentage is per TRACK, not per detection.
-    Here parent_id is replicated across every row of the track for
-    convenience (tidy table). The actual division happens only at the
-    transition between the mother's last frame and the daughter's first
-    frame — keep that in mind if feeding lineage metrics.
+    NOTA sobre semântica: no CTC o parentesco é por TRACK, não por detecção.
+    Aqui o parent_id é replicado em todas as linhas da track por conveniência
+    (tabela tidy). A divisão real ocorre apenas na transição entre o último
+    frame da mãe e o primeiro frame da filha — leve isso em conta se for
+    alimentar métricas de linhagem.
     """
     parent_map = parse_res_track(ctc_folder)
 
     mask_files = glob.glob(os.path.join(ctc_folder, "mask*.tif"))
     if not mask_files:
-        raise FileNotFoundError(f"No 'mask*.tif' image found in: {ctc_folder}")
+        raise FileNotFoundError(f"Nenhuma imagem 'mask*.tif' encontrada em: {ctc_folder}")
 
-    # Sort by the numeric index extracted from the name, not lexicographically
+    # Ordena pelo índice numérico extraído do nome, não lexicograficamente
     mask_files.sort(key=_frame_index_from_name)
 
     data = []
@@ -93,15 +93,15 @@ def ctc_to_dataframe(ctc_folder):
 
         for prop in props:
             track_id = prop.label
-            # centroid returns (row, column) = (y, x) in image coordinates
+            # centroid retorna (linha, coluna) = (y, x) em coordenadas de imagem
             y, x = prop.centroid
 
             if track_id not in parent_map:
-                # Label present in the mask but absent from res_track.txt:
-                # this signals a CTC dataset inconsistency, not a normal case.
+                # Label presente na máscara mas ausente no res_track.txt:
+                # isso indica inconsistência no dataset CTC, não um caso normal.
                 warnings.warn(
-                    f"track_id {track_id} (frame {frame_idx}) is not in the "
-                    f"tracking file; using parent_id=-1. Check the dataset integrity."
+                    f"track_id {track_id} (frame {frame_idx}) não está no arquivo "
+                    f"de tracking; usando parent_id=-1. Verifique a integridade do dataset."
                 )
 
             data.append({
@@ -116,6 +116,7 @@ def ctc_to_dataframe(ctc_folder):
     return df
 
 
+# --- Execução ---
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("folder")
@@ -123,8 +124,8 @@ if __name__ == "__main__":
     folder_path = args.folder
 
     df_tracks = ctc_to_dataframe(folder_path)
-    df_tracks.to_csv(f"{folder_path}/tracks_coordinates_table.csv", index=False)
+    df_tracks.to_csv(f"{folder_path}/tabela_coordenadas_tracks.csv", index=False)
 
     print(df_tracks.head(10))
-    print(f"\nTracks with a defined parent: {(df_tracks['parent_id'] != -1).sum()} rows")
-    print(f"Tracks without a parent (parent_id == -1): {(df_tracks['parent_id'] == -1).sum()} rows")
+    print(f"\nTracks com mãe definida: {(df_tracks['parent_id'] != -1).sum()} linhas")
+    print(f"Tracks sem mãe (parent_id == -1): {(df_tracks['parent_id'] == -1).sum()} linhas")
